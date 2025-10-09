@@ -2,22 +2,27 @@ name: SonarQube
 
 on:
   push:
-    branches:
-      - next
-      - main
+    branches: [next, main]
+    paths:
+      - 'soapui-installer/**'
+      - '.github/workflows/**'
   pull_request:
-    branches:
-      - next
-      - main
+    branches: [next, main]
+    paths:
+      - 'soapui-installer/**'
+      - '.github/workflows/**'
 
 jobs:
   build-and-analyze:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout (sparse)
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          sparse-checkout: |
+            soapui-installer
+          sparse-checkout-cone: true
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -26,7 +31,8 @@ jobs:
           java-version: '17'
           cache: maven
 
-      - name: Build and analyze (Maven + Sonar)
+      - name: Build and analyze (Maven + Sonar) - soapui-installer only
+        working-directory: ./soapui-installer   # équivaut à "cd soapui-installer"
         env:
           GITHUB_TOKEN:   ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN:    ${{ secrets.SONAR_TOKEN }}
@@ -34,7 +40,8 @@ jobs:
         run: |
           mvn -B -DskipTests -DskipITs -Dgpg.skip verify \
             org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
-            -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
-            -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
-            -Dsonar.projectKey=Soapui \
-            -Dsonar.projectName=Soapui
+            -Dsonar.host.url="${{ secrets.SONAR_HOST_URL }}" \
+            -Dsonar.login="${{ secrets.SONAR_TOKEN }}" \
+            -Dsonar.projectKey=Soapui_installer \
+            -Dsonar.projectName="Soapui Installer" \
+            -Dsonar.projectBaseDir=.
