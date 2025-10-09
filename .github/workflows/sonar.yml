@@ -16,35 +16,29 @@ on:
 
 jobs:
   build-and-analyze:
+    name: Build and analyze (Maven + Sonar)
     runs-on: ubuntu-latest
+    # 👇 Ce bloc fait en sorte que le job ne se déclenche que si des fichiers dans soapui-installer changent
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Set up JDK 17
+ 
+      - name: Set up JDK
         uses: actions/setup-java@v4
         with:
-          distribution: temurin
+          distribution: 'temurin'
           java-version: '17'
-          cache: maven
-
-      # Build le module dépendant localement si besoin,
-      # puis build + Sonar uniquement pour soapui-installer.
-      - name: Build + Sonar (only soapui-installer)
+ 
+      - name: Build and analyze (Maven + Sonar)
         env:
           GITHUB_TOKEN:   ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN:    ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         run: |
-          # Build du reactor en incluant les deps nécessaires (-am),
-          # mais ciblé sur le module à analyser (-pl soapui-installer)
-          mvn -B -DskipTests -DskipITs -Dgpg.skip \
-             -pl soapui-installer -am verify \
-             org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
-             -Dsonar.host.url="${{ secrets.SONAR_HOST_URL }}" \
-             -Dsonar.login="${{ secrets.SONAR_TOKEN }}" \
-             -Dsonar.projectKey=Soapui_installer \
-             -Dsonar.projectName="Soapui Installer" \
-             -Dsonar.projectBaseDir=soapui-installer
+          cd soapui-installer
+          mvn -B -DskipTests -DskipITs -Dgpg.skip verify \
+            org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+            -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
+            -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
+            -Dsonar.projectKey=Soapui \
+            -Dsonar.projectName=Soapui
