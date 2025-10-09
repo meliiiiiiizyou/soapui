@@ -5,7 +5,7 @@ on:
     branches: [next, main]
     paths:
       - 'soapui-installer/**'
-      - 'soapui/**'                 # nécessaire si la dépendance change
+      - 'soapui/**'                 # la dépendance locale
       - '.github/workflows/**'
   pull_request:
     branches: [next, main]
@@ -18,27 +18,32 @@ jobs:
   build-and-analyze:
     name: Build and analyze (Maven + Sonar)
     runs-on: ubuntu-latest
-    # 👇 Ce bloc fait en sorte que le job ne se déclenche que si des fichiers dans soapui-installer changent
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
- 
+        with:
+          fetch-depth: 0
+
       - name: Set up JDK
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
+          distribution: temurin
           java-version: '17'
- 
-      - name: Build and analyze (Maven + Sonar)
+          cache: maven
+
+      - name: Build deps + analyze only soapui-installer
         env:
           GITHUB_TOKEN:   ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN:    ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         run: |
-          cd soapui-installer
-          mvn -B -DskipTests -DskipITs -Dgpg.skip verify \
+          # Construit soapui-installer ET ses dépendances locales (-am),
+          # sans changer de dossier, puis limite l'analyse Sonar au module.
+          mvn -B -DskipTests -DskipITs -Dgpg.skip \
+            -pl soapui-installer -am verify \
             org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
-            -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
-            -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
-            -Dsonar.projectKey=Soapui \
-            -Dsonar.projectName=Soapui
+            -Dsonar.host.url="${{ secrets.SONAR_HOST_URL }}" \
+            -Dsonar.login="${{ secrets.SONAR_TOKEN }}" \
+            -Dsonar.projectKey=com.smartbear.soapui:soapui-installer \
+            -Dsonar.projectName="soapui-installer" \
+            -Dsonar.projectBaseDir=soapui-installer
