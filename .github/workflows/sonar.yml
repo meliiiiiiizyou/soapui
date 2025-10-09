@@ -5,7 +5,7 @@ on:
     branches: [next, main]
     paths:
       - 'soapui-installer/**'
-      - 'soapui/**'                 # la dépendance locale
+      - 'soapui/**'                 # la dépendance locale test
       - '.github/workflows/**'
   pull_request:
     branches: [next, main]
