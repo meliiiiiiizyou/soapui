@@ -3,16 +3,10 @@ name: SonarQube
 on:
   push:
     branches: [next, main]
-    paths:
-      - 'soapui-installer/**'
-      - 'soapui/**'
-      - '.github/workflows/**'
+    paths: ['soapui-installer/**','soapui/**','.github/workflows/**']
   pull_request:
     branches: [next, main]
-    paths:
-      - 'soapui-installer/**'
-      - 'soapui/**'
-      - '.github/workflows/**'
+    paths: ['soapui-installer/**','soapui/**','.github/workflows/**']
 
 jobs:
   build-and-analyze:
@@ -31,16 +25,23 @@ jobs:
           java-version: '17'
           cache: maven
 
-      - name: Build deps + analyze only soapui-installer
+      # 1) Build le module cible + ses dépendances locales (installe dans le cache Maven local)
+      - name: Build reactor (install deps)
+        run: |
+          mvn -B -DskipTests -DskipITs -Dgpg.skip -pl soapui-installer -am install
+
+      # 2) Lancer Sonar UNIQUEMENT sur le module, en pointant directement son POM
+      - name: Sonar analysis (module-only)
         env:
-          GITHUB_TOKEN:   ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN:    ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}   # ex: https://sonarqube.… ou https://sonarcloud.io
         run: |
           mvn -B -DskipTests -DskipITs -Dgpg.skip \
-            -pl soapui-installer -am verify \
+            -f soapui-installer/pom.xml \
             org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
-            -Dsonar.host.url="${{ secrets.SONAR_HOST_URL }}" \
-            -Dsonar.login="${{ secrets.SONAR_TOKEN }}" \
+            -Dsonar.host.url="$SONAR_HOST_URL" \
+            -Dsonar.login="$SONAR_TOKEN" \
             -Dsonar.projectKey=com.smartbear.soapui:soapui-installer \
             -Dsonar.projectName="soapui-installer"
+            # Si SonarCloud, ajoute:
+            # -Dsonar.organization=<ton_org_key>
